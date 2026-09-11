@@ -1,7 +1,9 @@
 import flet as ft
 
 from componentes import crear_header
+from agregar_maquina import vista_agregar_maquina
 from dashboard import vista_dashboard
+from detalle_maquina import vista_detalle_maquina
 from listado import vista_listado
 
 
@@ -35,6 +37,13 @@ def main(page: ft.Page):
 
         elif page.route == "/maquinas":
             vista_listado(page)
+
+        elif page.route == "/maquinas/agregar":
+            vista_agregar_maquina(page)
+
+        elif page.route.startswith("/maquinas/"):
+            codigo_maquina = page.route.rsplit("/", 1)[-1]
+            vista_detalle_maquina(page, codigo_maquina)
 
     def iniciar_sesion(e):
         if txt_usuario.value == "maria.lopez" and txt_password.value == "1234":

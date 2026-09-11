@@ -114,6 +114,7 @@ def vista_listado(page: ft.Page):
             border_radius=20,
             padding=14,
             expand=True,
+            on_click=lambda _: page.go(f"/maquinas/{maquina['codigo']}"),
         )
 
     def seleccionar_filtro(e):
@@ -193,12 +194,29 @@ def vista_listado(page: ft.Page):
         scroll=ft.ScrollMode.AUTO,
     )
 
+    maquinas = [
+        datos_maquina,
+        {
+            **datos_maquina,
+            "codigo": "MAQ-02",
+            "nombre": "Fresadora 01",
+            "marca": "DMG Mori",
+            "modelo": "CMX 600 V",
+            "ubicacion": "Planta 2",
+        },
+        {
+            **datos_maquina,
+            "codigo": "MAQ-03",
+            "nombre": "Prensa 02",
+            "marca": "Haas",
+            "modelo": "VF-2",
+            "ubicacion": "Planta 1",
+            "estado": "Mantenimiento",
+        },
+    ]
+
     lista_maquinas = ft.ListView(
-        controls=[
-            registro(datos_maquina),
-            registro(datos_maquina),
-            registro(datos_maquina),
-        ],
+        controls=[registro(maquina) for maquina in maquinas],
         expand=True,
         spacing=10,
     )
@@ -224,7 +242,7 @@ def vista_listado(page: ft.Page):
         ),
         bgcolor=estilos.COLOR_PRINCIPAL,
         width=160,
-        on_click=lambda _: print("Agregar Máquina"),
+        on_click=lambda _: page.go("/maquinas/agregar"),
     )
 
     page.floating_action_button_location = ft.FloatingActionButtonLocation.END_FLOAT
