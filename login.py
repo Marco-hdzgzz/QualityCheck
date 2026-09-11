@@ -1,67 +1,70 @@
 import flet as ft
 
+from componentes import crear_header
+from dashboard import vista_dashboard
+from listado import vista_listado
+
 
 def main(page: ft.Page):
-    page.title = "MantenimientoPro - Login"
+    page.title = "QualityCheck - Login"
     page.padding = 0
-    page.window_width = 380
-    page.window_height = 700
-    page.window_resizable = False
     page.bgcolor = "#F5F6F8"
+
+    page.window.width = 380
+    page.window.height = 700
+    page.window.resizable = False
+
+    def mostrar_snackbar(mensaje):
+        snackbar = ft.SnackBar(
+            content=ft.Text(
+                mensaje,
+                color="#FFFFFF",
+            ),
+            bgcolor="#25252B",
+        )
+
+        page.overlay.append(snackbar)
+        snackbar.open = True
+        page.update()
+
+    def cambiar_ruta(e):
+        page.clean()
+
+        if page.route == "/dashboard":
+            vista_dashboard(page)
+
+        elif page.route == "/maquinas":
+            vista_listado(page)
 
     def iniciar_sesion(e):
         if txt_usuario.value == "maria.lopez" and txt_password.value == "1234":
-            page.snack_bar = ft.SnackBar(ft.Text("Bienvenida, María López"))
-            page.snack_bar.open = True
-            page.update()
+            page.window.resizable = True
+            page.go("/dashboard")
         else:
-            page.snack_bar = ft.SnackBar(ft.Text("Usuario o contraseña incorrectos"))
-            page.snack_bar.open = True
-            page.update()
+            mostrar_snackbar("Usuario o contraseña incorrectos")
 
     def cerrar_recuperacion(e):
         dialogo_recuperacion.open = False
         page.update()
 
-    header = ft.Container(
-        content=ft.Row(
-            [
-                ft.Container(
-                    ft.Image(
-                        src="logo.png",
-                        width=44,
-                        height=44,
-                        fit=ft.ImageFit.CONTAIN,
-                    ),
-                    width=44,
-                    height=44,
-                    bgcolor="#FFFFFF",
-                    border_radius=22,
-                    alignment=ft.alignment.center,
-                ),
-                ft.Column(
-                    [
-                        ft.Text(
-                            "QualityCheck",
-                            color="#25252B",
-                            weight=ft.FontWeight.BOLD,
-                            size=20,
-                        ),
-                        ft.Text(
-                            "SISTEMA DE INSPECCIÓN INDUSTRIAL",
-                            color="#25252B",
-                            size=9,
-                        ),
-                    ],
-                    spacing=2,
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                ),
-            ],
-            spacing=10,
-        ),
-        bgcolor="#F5A000",
-        padding=15,
-    )
+    def enviar_recuperacion(e):
+        if correo_recuperacion.value:
+            dialogo_recuperacion.open = False
+            page.update()
+            mostrar_snackbar("Se enviaron instrucciones de recuperación.")
+        else:
+            mostrar_snackbar("Ingrese un correo electrónico.")
+
+    def abrir_recuperacion(e):
+        if dialogo_recuperacion not in page.overlay:
+            page.overlay.append(dialogo_recuperacion)
+
+        dialogo_recuperacion.open = True
+        page.update()
+
+    page.on_route_change = cambiar_ruta
+
+    header = crear_header()
 
     txt_titulo = ft.Text(
         "Inicia sesión",
@@ -75,11 +78,17 @@ def main(page: ft.Page):
     txt_usuario = ft.TextField(
         label="USUARIO/CORREO",
         hint_text="Ingrese su usuario o correo electrónico",
-        hint_style=ft.TextStyle(size=12, color="#6B7280"),
+        hint_style=ft.TextStyle(
+            size=12,
+            color="#6B7280",
+        ),
         value="maria.lopez",
         border_color="#BDBDBD",
-        focused_border_color="#1e3d2f",
-        label_style=ft.TextStyle(size=12, color="#616161"),
+        focused_border_color="#F5A000",
+        label_style=ft.TextStyle(
+            size=11,
+            color="#616161",
+        ),
         width=320,
         bgcolor="#FFFFFF",
         color="#25252B",
@@ -88,48 +97,67 @@ def main(page: ft.Page):
     txt_password = ft.TextField(
         label="CONTRASEÑA",
         hint_text="Ingrese su contraseña",
-        hint_style=ft.TextStyle(size=12, color="#6B7280"),
+        hint_style=ft.TextStyle(
+            size=12,
+            color="#6B7280",
+        ),
+        value="1234",
         password=True,
         can_reveal_password=True,
         border_color="#BDBDBD",
-        focused_border_color="#1e3d2f",
-        label_style=ft.TextStyle(size=12, color="#616161"),
+        focused_border_color="#F5A000",
+        label_style=ft.TextStyle(
+            size=11,
+            color="#616161",
+        ),
         width=320,
         bgcolor="#FFFFFF",
         color="#25252B",
     )
 
-    txr_recordar = ft.Checkbox(
-        label="Recordar usuario",
+    checkbox_recordar = ft.Checkbox(
         value=False,
-        label_style=ft.TextStyle(size=12, color="#616161"),
         active_color="#F5A000",
-        width=320,
     )
 
-    btn_entrar = ft.ElevatedButton(
-        content=ft.Text("INICIAR SESIÓN", color="#25252B", weight=ft.FontWeight.BOLD),
-        bgcolor="#F5A000",
+    recordar_usuario = ft.Container(
+        content=ft.Row(
+            [
+                checkbox_recordar,
+                ft.Text(
+                    "Recordar usuario",
+                    size=12,
+                    color="#616161",
+                ),
+            ],
+            spacing=5,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
         width=320,
-        height=50,
-        on_click=iniciar_sesion,
     )
 
     correo_recuperacion = ft.TextField(
         label="Correo electrónico",
         hint_text="Ingrese su correo electrónico",
-        hint_style=ft.TextStyle(size=12, color="#6B7280"),
+        hint_style=ft.TextStyle(
+            size=12,
+            color="#6B7280",
+        ),
         border_color="#BDBDBD",
-        focused_border_color="#1e3d2f",
-        label_style=ft.TextStyle(size=12, color="#616161"),
-        width=320,
+        focused_border_color="#F5A000",
+        label_style=ft.TextStyle(
+            size=11,
+            color="#616161",
+        ),
         bgcolor="#FFFFFF",
         color="#25252B",
     )
 
     dialogo_recuperacion = ft.AlertDialog(
         title=ft.Text(
-            "Recuperación de contraseña", color="#25252B", weight=ft.FontWeight.BOLD
+            "Recuperación de contraseña",
+            color="#25252B",
+            weight=ft.FontWeight.BOLD,
         ),
         content=ft.Column(
             [
@@ -138,43 +166,61 @@ def main(page: ft.Page):
                     color="#616161",
                     size=12,
                 ),
+                ft.Container(height=10),
                 correo_recuperacion,
             ],
             tight=True,
         ),
-        bgcolor="#F5f6f8",
+        bgcolor="#F5F6F8",
         actions=[
             ft.TextButton(
-                "Cancelar",
-                on_click=cerrar_recuperacion,
-                style=ft.ButtonStyle(
-                    color={"": "#25252B"}, overlay_color={"": "#F5A000"}
+                content=ft.Text(
+                    "Cancelar",
+                    color="#25252B",
                 ),
+                on_click=cerrar_recuperacion,
             ),
             ft.TextButton(
-                "Enviar",
-                on_click=cerrar_recuperacion,
-                style=ft.ButtonStyle(
-                    color={"": "#25252B"}, overlay_color={"": "#F5A000"}
+                content=ft.Text(
+                    "Enviar",
+                    color="#25252B",
+                    weight=ft.FontWeight.BOLD,
                 ),
+                on_click=enviar_recuperacion,
             ),
         ],
     )
 
-    def open_recuperacion(e):
-        page.dialog = dialogo_recuperacion
-        dialogo_recuperacion.open = True
-        page.update()
-
     recuperar_pass = ft.TextButton(
-        content=ft.Text("¿Olvidaste tu contraseña?", color="#616161"),
-        on_click=open_recuperacion,
+        content=ft.Text(
+            "¿Olvidaste tu contraseña?",
+            color="#616161",
+            size=12,
+        ),
+        on_click=abrir_recuperacion,
+    )
+
+    btn_entrar = ft.Button(
+        content=ft.Text(
+            "INICIAR SESIÓN",
+            color="#25252B",
+            weight=ft.FontWeight.BOLD,
+            size=13,
+        ),
+        bgcolor="#F5A000",
+        width=320,
+        height=48,
+        on_click=iniciar_sesion,
     )
 
     pie_pagina = ft.Container(
         content=ft.Row(
             [
-                ft.Icon(name=ft.icons.LOCK_OUTLINE, size=12, color="#919090"),
+                ft.Icon(
+                    ft.Icons.LOCK_OUTLINE,
+                    size=12,
+                    color="#919090",
+                ),
                 ft.Text(
                     "Acceso seguro según rol técnico",
                     size=11,
@@ -183,6 +229,7 @@ def main(page: ft.Page):
                 ),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
+            spacing=5,
             tight=True,
         ),
         bgcolor="#EBEEF2",
@@ -190,35 +237,47 @@ def main(page: ft.Page):
         border_radius=20,
     )
 
+    formulario = ft.Column(
+        [
+            txt_titulo,
+            ft.Container(height=14),
+            txt_usuario,
+            ft.Container(height=10),
+            txt_password,
+            ft.Container(height=4),
+            recordar_usuario,
+            ft.Container(height=2),
+            recuperar_pass,
+            ft.Container(height=10),
+            btn_entrar,
+            ft.Container(height=30),
+            pie_pagina,
+        ],
+        spacing=0,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
     cuerpo = ft.Container(
-        content=ft.Column(
-            [
-                txt_titulo,
-                ft.Container(height=10),
-                txt_usuario,
-                ft.Container(height=10),
-                txt_password,
-                ft.Container(height=5),
-                txr_recordar,
-                ft.Container(height=5),
-                recuperar_pass,
-                ft.Container(height=10),
-                btn_entrar,
-                ft.Container(height=30),
-                pie_pagina,
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        ),
+        content=formulario,
         padding=20,
+        alignment=ft.Alignment.TOP_CENTER,
+        expand=True,
     )
 
     page.add(
         ft.Column(
-            [header, cuerpo],
+            [
+                header,
+                cuerpo,
+            ],
             spacing=0,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            expand=True,
         )
     )
 
 
-ft.app(target=main, assets_dir="assets")
+ft.run(
+    main,
+    assets_dir="assets",
+)
