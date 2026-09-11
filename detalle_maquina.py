@@ -8,7 +8,6 @@ from componentes import (
     configurar_navbar,
 )
 
-
 MAQUINAS = {
     "MAQ-01": {
         "codigo": "MAQ-01",
@@ -71,14 +70,10 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
         page.update()
 
     def realizar_inspeccion(e):
-        mostrar_mensaje(
-            f"Nueva inspección iniciada para {maquina['nombre']}."
-        )
+        mostrar_mensaje(f"Nueva inspección iniciada para {maquina['nombre']}.")
 
     def programar_revision(e):
-        mostrar_mensaje(
-            f"Programación de revisión para {maquina['nombre']}."
-        )
+        mostrar_mensaje(f"Programación de revisión para {maquina['nombre']}.")
 
     estado_color = "#166534" if maquina["estado"] == "Operativa" else "#92400E"
     estado_fondo = "#DCFCE7" if maquina["estado"] == "Operativa" else "#FEF3C7"
@@ -154,6 +149,8 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
                         ),
                     ],
                     spacing=3,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
                 ),
             ],
             spacing=8,
@@ -202,28 +199,58 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
             ft.Row(
                 [
                     resumen_estado,
-                    resumen(
-                        "Próxima inspección",
-                        maquina["proxima_inspeccion"],
-                        ft.Icons.EVENT_OUTLINED,
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.Icons.WARNING_AMBER_OUTLINED,
+                                    color=estilos.COLOR_PRINCIPAL,
+                                    size=22,
+                                ),
+                                ft.Column(
+                                    [
+                                        ft.Text(
+                                            "Hallazgos abiertos",
+                                            size=11,
+                                            color=estilos.COLOR_TEXTO_SECUNDARIO,
+                                        ),
+                                        ft.Text(
+                                            maquina["hallazgos_abiertos"],
+                                            size=14,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=estilos.COLOR_TEXTO,
+                                        ),
+                                    ],
+                                    spacing=3,
+                                ),
+                            ],
+                            spacing=8,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        bgcolor="#FFFFFF",
+                        border_radius=12,
+                        padding=12,
+                        expand=True,
                     ),
                 ],
+                height=60,
                 spacing=10,
             ),
             ft.Row(
                 [
                     resumen(
+                        "Próxima inspección",
+                        maquina["proxima_inspeccion"],
+                        ft.Icons.EVENT_OUTLINED,
+                    ),
+                    resumen(
                         "Última inspección",
                         maquina["ultima_inspeccion"],
                         ft.Icons.HISTORY,
                     ),
-                    resumen(
-                        "Hallazgos abiertos",
-                        maquina["hallazgos_abiertos"],
-                        ft.Icons.WARNING_AMBER_OUTLINED,
-                    ),
                 ],
                 spacing=10,
+                height=120,
             ),
             ft.Container(height=8),
             ft.Text(

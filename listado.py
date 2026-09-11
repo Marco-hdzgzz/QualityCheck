@@ -32,7 +32,21 @@ def vista_listado(page: ft.Page):
     }
 
     # Tarjeta
+
     def registro(maquina):
+
+        if maquina["estado"] == "Operativa":
+            color_estado = "#166534"
+            fondo_estado = "#DCFCE7"
+
+        elif maquina["estado"] == "Mantenimiento":
+            color_estado = "#92400E"
+            fondo_estado = "#FEF3C7"
+
+        else:
+            color_estado = "#991B1B"
+            fondo_estado = "#FEE2E2"
+
         return ft.Container(
             content=ft.Column(
                 [
@@ -87,10 +101,10 @@ def vista_listado(page: ft.Page):
                                 content=ft.Text(
                                     maquina["estado"],
                                     size=12,
-                                    color="#166534",
+                                    color=color_estado,
                                     weight=ft.FontWeight.BOLD,
                                 ),
-                                bgcolor="#DCFCE7",
+                                bgcolor=fondo_estado,
                                 padding=5,
                                 border_radius=20,
                             ),

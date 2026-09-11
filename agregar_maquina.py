@@ -40,6 +40,17 @@ def vista_agregar_maquina(page: ft.Page):
         mostrar_mensaje("Máquina registrada correctamente.")
         page.go("/maquinas")
 
+    def seleccionar_fecha(e):
+        if selector_fecha.value:
+            fecha_adquisicion.value = selector_fecha.value.strftime("%d/%m/%Y")
+            page.update()
+
+    selector_fecha = ft.DatePicker(
+        on_change=seleccionar_fecha,
+    )
+
+    page.overlay.append(selector_fecha)
+
     def crear_campo(label, hint):
         return ft.TextField(
             label=label,
@@ -75,7 +86,15 @@ def vista_agregar_maquina(page: ft.Page):
         color=estilos.COLOR_TEXTO,
         expand=True,
     )
-    fecha_revision = crear_campo("Próxima revisión", "Ej. 12 de Septiembre")
+    fecha_adquisicion = ft.TextField(
+        label="Fecha de adquisición",
+        read_only=True,
+        bgcolor="#FFFFFF",
+        border_color="#BDBDBD",
+        focused_border_color=estilos.COLOR_PRINCIPAL,
+        color=estilos.COLOR_TEXTO,
+        expand=True,
+    )
 
     formulario = ft.Column(
         controls=[
@@ -94,7 +113,15 @@ def vista_agregar_maquina(page: ft.Page):
             ft.Row([codigo, nombre], spacing=12),
             ft.Row([marca, modelo], spacing=12),
             ft.Row([ubicacion, estado], spacing=12),
-            fecha_revision,
+            ft.Row(
+                [
+                    fecha_adquisicion,
+                    ft.IconButton(
+                        icon=ft.Icons.CALENDAR_MONTH,
+                        on_click=lambda e: setattr(selector_fecha, "open", True),
+                    ),
+                ]
+            ),
             ft.Container(height=8),
             ft.Row(
                 [

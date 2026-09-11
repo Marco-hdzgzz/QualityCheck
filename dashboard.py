@@ -23,9 +23,7 @@ def vista_dashboard(page: ft.Page):
 
     maquinas = list(MAQUINAS.values())
     conteos = {
-        "Operativas": sum(
-            maquina["estado"] == "Operativa" for maquina in maquinas
-        ),
+        "Operativas": sum(maquina["estado"] == "Operativa" for maquina in maquinas),
         "En revisión": sum(
             maquina["estado"] == "Mantenimiento" for maquina in maquinas
         ),
@@ -157,6 +155,7 @@ def vista_dashboard(page: ft.Page):
                         ft.Icons.DASHBOARD_OUTLINED,
                     ),
                 ],
+                height=100,
                 spacing=8,
             ),
             ft.Container(height=8),
@@ -167,10 +166,7 @@ def vista_dashboard(page: ft.Page):
                 color=estilos.COLOR_TEXTO,
             ),
             ft.Column(
-                [
-                    tarjeta_revision(maquina)
-                    for maquina in maquinas
-                ],
+                [tarjeta_revision(maquina) for maquina in maquinas],
                 spacing=8,
             ),
         ],
