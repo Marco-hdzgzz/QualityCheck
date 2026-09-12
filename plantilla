@@ -1,0 +1,81 @@
+# Documento para copiar y pegar elementos reutilizables
+
+# Copia esta estructura cuando necesites reutilizar
+# el header, navbar y tema.
+import flet as ft
+import estilos
+
+from componentes import (
+    aplicar_tema,
+    crear_header,
+    crear_menu_mas,
+    configurar_navbar,
+)
+
+
+# cambia el nombre del def dependiendo del nombre de la pantalla a desarollar
+def vista_prueba(page: ft.Page):
+    page.title = "QualityCheck - Dashboard"
+    page.padding = 0
+    page.bgcolor = estilos.COLOR_FONDO
+    page.floating_action_button = None
+
+    aplicar_tema(page)
+
+    header = crear_header()
+    menu_mas = crear_menu_mas()
+
+    cont = ft.Container(
+        content=ft.Text(
+            "ola",
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            color=estilos.COLOR_TEXTO,
+        ),
+        padding=20,
+        expand=True,
+    )
+
+    contenido = ft.Stack(
+        [
+            cont,
+            ft.Container(
+                content=menu_mas,
+                right=15,
+                bottom=15,
+            ),
+        ],
+        expand=True,
+    )
+
+    configurar_navbar(
+        page,
+        menu_mas,
+        # 0 = Inicio
+        # 1 = Máquinas
+        # 2 = Inspecciones
+        # 3 = Hallazgos
+        indice_inicial=0,
+    )
+
+    page.add(
+        ft.Column(
+            [
+                header,
+                contenido,
+            ],
+            spacing=0,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            expand=True,
+        )
+    )
+
+
+# Inserta esto hasta el final del documento si quieres trabajar en una unica pantalla sin navegar a las demás
+# SOLO PARA DESARROLLO INDIVIDUAL.
+# Quitar o comentar al integrar esta pantalla a la app completa.
+ft.run(
+    # aqui pon el nombre del def principal
+    vista_prueba,
+    assets_dir="assets",
+)
