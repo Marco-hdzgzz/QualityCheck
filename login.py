@@ -5,6 +5,7 @@ from agregar_maquina import vista_agregar_maquina
 from dashboard import vista_dashboard
 from detalle_maquina import vista_detalle_maquina
 from listado import vista_listado
+from editar_maquina import vista_editar_maquina
 
 
 def main(page: ft.Page):
@@ -40,6 +41,10 @@ def main(page: ft.Page):
 
         elif page.route == "/maquinas/agregar":
             vista_agregar_maquina(page)
+
+        elif page.route.startswith("/maquinas/editar/"):
+            codigo_maquina = page.route.rsplit("/", 1)[-1]
+            vista_editar_maquina(page, codigo_maquina)
 
         elif page.route.startswith("/maquinas/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]

@@ -108,6 +108,7 @@ def vista_listado(page: ft.Page):
                         ft.IconButton(
                             icon=ft.CupertinoIcons.SQUARE_PENCIL,
                             tooltip="Editar máquina",
+                            on_click=lambda e, cod=maquina["codigo"]: page.go(f"/maquinas/editar/{cod}"),
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -170,7 +171,8 @@ def vista_listado(page: ft.Page):
     filtradas = []
 
     for m in maquinas:
-      if filtro_actual != "Todas" and m["estado"] != filtro_actual:
+      estado_filtro = filtro_actual[:-1] if filtro_actual.endswith("s") else filtro_actual
+      if filtro_actual != "Todas" and m["estado"] != estado_filtro:
         continue
 
       coincide_texto = (
@@ -180,6 +182,9 @@ def vista_listado(page: ft.Page):
           or texto_busqueda in m["modelo"].lower()
           or texto_busqueda in m["ubicacion"].lower()
       )
+
+      if texto_busqueda == "" or coincide_texto:
+        filtradas.append(m)
 
       if texto_busqueda == "" or coincide_texto:
         filtradas.append(m)
