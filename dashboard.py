@@ -7,7 +7,7 @@ from componentes import (
     crear_menu_mas,
     configurar_navbar,
 )
-from detalle_maquina import MAQUINAS
+from maquinas_data import MAQUINAS
 
 
 def vista_dashboard(page: ft.Page):
@@ -159,12 +159,19 @@ def vista_dashboard(page: ft.Page):
                 spacing=8,
             ),
             ft.Container(height=8),
-            ft.Text(
-                "Próximas revisiones",
-                size=16,
-                weight=ft.FontWeight.BOLD,
-                color=estilos.COLOR_TEXTO,
-            ),
+            ft.Row([
+                ft.Text(
+                    "Próximas revisiones",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                    color=estilos.COLOR_TEXTO,
+                    expand=True,
+                ),
+                ft.TextButton(
+                    content=ft.Text("Gestionar revisiones", color=estilos.COLOR_TEXTO),
+                    on_click=lambda e: page.go("/revisiones"),
+                ),
+            ]),
             ft.Column(
                 [tarjeta_revision(maquina) for maquina in maquinas],
                 spacing=8,
@@ -207,6 +214,10 @@ def vista_dashboard(page: ft.Page):
             ],
             spacing=0,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            expand=True,
+        )
+    )
+
             expand=True,
         )
     )
