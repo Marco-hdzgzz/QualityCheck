@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
-from detalle_maquina import MAQUINAS
+from maquinas_data import MAQUINAS
 from revision_preventiva_model import RevisionPreventiva
 
 
@@ -131,7 +131,7 @@ class RevisionPreventivaService:
             fecha_programada=str(datos["fecha_programada"]).strip(),
             estado=datos.get("estado", "Programada"),
             observaciones=str(datos.get("observaciones", "")).strip(),
-            proxima_revision=(str(datos.get("proxima_revision", "")).strip() or None),
+            proxima_revision=(str(datos.get("proxima_revision") or "").strip() or None),
             created_at=ahora,
             updated_at=ahora,
         )

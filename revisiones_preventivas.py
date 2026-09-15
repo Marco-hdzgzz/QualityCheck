@@ -2,7 +2,7 @@ import flet as ft
 
 import estilos
 from componentes import aplicar_tema, crear_header, crear_menu_mas, configurar_navbar
-from detalle_maquina import MAQUINAS
+from maquinas_data import MAQUINAS
 from revision_preventiva_service import RevisionPreventivaService, TIPOS_REVISION
 
 
@@ -325,6 +325,12 @@ def vista_revisiones_preventivas(page: ft.Page, maquina_inicial: str | None = No
         ]),
         txt_resumen,
         ft.Row([filtro_maquina, filtro_estado], spacing=10),
+        ft.Row([
+            ft.TextButton(
+                content=ft.Row([ft.Icon(ft.Icons.HISTORY, size=18), ft.Text("Historial")], tight=True),
+                on_click=lambda e: page.go("/revisiones/historial"),
+            ),
+        ], alignment=ft.MainAxisAlignment.END),
         lista,
     ], spacing=12, expand=True)
 
