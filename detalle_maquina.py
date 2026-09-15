@@ -73,8 +73,17 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
         mostrar_mensaje(f"Nueva inspección iniciada para {maquina['nombre']}.")
 
     def programar_revision(e):
-        # Abre Revisiones Preventivas conservando la máquina actual seleccionada.
-        page.go(f"/revisiones-preventivas/{maquina['codigo']}")
+        # Importación local para evitar una dependencia circular:
+        # revisiones_preventivas.py reutiliza MAQUINAS desde este módulo.
+        from revisiones_preventivas import vista_revisiones_preventivas
+
+        # Limpia únicamente la vista actual y abre el módulo de revisiones
+        # con la máquina seleccionada previamente.
+        page.clean()
+        vista_revisiones_preventivas(
+            page,
+            maquina_inicial=maquina["codigo"],
+        )
 
     estado_color = "#166534" if maquina["estado"] == "Operativa" else "#92400E"
     estado_fondo = "#DCFCE7" if maquina["estado"] == "Operativa" else "#FEF3C7"
