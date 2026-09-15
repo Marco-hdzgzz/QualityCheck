@@ -6,6 +6,8 @@ from dashboard import vista_dashboard
 from detalle_maquina import vista_detalle_maquina
 from listado import vista_listado
 from editar_maquina import vista_editar_maquina
+from revisiones_preventivas import vista_revisiones_preventivas
+from historial_revisiones import vista_historial_revisiones
 
 
 def main(page: ft.Page):
@@ -45,6 +47,16 @@ def main(page: ft.Page):
         elif page.route.startswith("/maquinas/editar/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
             vista_editar_maquina(page, codigo_maquina)
+
+        elif page.route == "/revisiones":
+            vista_revisiones_preventivas(page)
+
+        elif page.route == "/revisiones/historial":
+            vista_historial_revisiones(page)
+
+        elif page.route.startswith("/revisiones/maquina/"):
+            codigo_maquina = page.route.rsplit("/", 1)[-1]
+            vista_revisiones_preventivas(page, codigo_maquina)
 
         elif page.route.startswith("/maquinas/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
@@ -295,3 +307,4 @@ ft.run(
     main,
     assets_dir="assets",
 )
+
