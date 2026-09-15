@@ -217,7 +217,4 @@ def vista_dashboard(page: ft.Page):
             expand=True,
         )
     )
-
-            expand=True,
-        )
-    )
+        
