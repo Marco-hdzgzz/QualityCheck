@@ -53,7 +53,7 @@ def vista_prueba(page: ft.Page):
         menu_mas,
         # 0 = Inicio
         # 1 = Máquinas
-        # 2 = Inspecciones
+        # 2 = revisiones
         # 3 = Hallazgos
         indice_inicial=0,
     )
