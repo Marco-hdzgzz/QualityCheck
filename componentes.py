@@ -23,7 +23,7 @@ def aplicar_tema(page):
     )
 
 
-def crear_header():
+def crear_header(titulo=None):
     return ft.Container(
         content=ft.Row(
             [
@@ -43,7 +43,7 @@ def crear_header():
                 ft.Column(
                     [
                         ft.Text(
-                            "QualityCheck",
+                            titulo or "QualityCheck",
                             color="#25252B",
                             weight=ft.FontWeight.BOLD,
                             size=20,
@@ -65,7 +65,12 @@ def crear_header():
     )
 
 
-def crear_menu_mas():
+def crear_menu_mas(page=None):
+    def cerrar_sesion(e):
+        page.session.store.remove("usuario_id")
+        page.session.store.remove("usuario_nombre")
+        page.go("/")
+
     return ft.Container(
         content=ft.Column(
             [
@@ -96,6 +101,7 @@ def crear_menu_mas():
                         color="#B91C1C",
                     ),
                     title=ft.Text("Cerrar sesión", color="#B91C1C"),
+                    on_click=cerrar_sesion if page else None,
                 ),
             ],
             tight=True,
@@ -132,7 +138,7 @@ def crear_destinos_navbar(pequeno=False):
                 ft.Icons.ASSIGNMENT,
                 color=estilos.COLOR_TEXTO,
             ),
-            label="Inspecciones",
+            label="revisiones",
         ),
     ]
 
@@ -171,7 +177,7 @@ def configurar_navbar(page, menu_mas, indice_inicial=0):
     rutas = {
         0: "/dashboard",
         1: "/maquinas",
-        2: "/inspecciones",
+        2: "/revisiones",
         3: "/hallazgos",
     }
 

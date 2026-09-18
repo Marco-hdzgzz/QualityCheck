@@ -6,8 +6,9 @@ from dashboard import vista_dashboard
 from detalle_maquina import vista_detalle_maquina
 from listado import vista_listado
 from editar_maquina import vista_editar_maquina
-from revisiones_preventivas import vista_revisiones_preventivas
-from historial_revisiones import vista_historial_revisiones
+from revisiones import vista_revisiones
+from database import SessionLocal
+from services import validar_login
 
 
 def main(page: ft.Page):
@@ -34,40 +35,78 @@ def main(page: ft.Page):
 
     def cambiar_ruta(e):
         page.clean()
+        page.navigation_bar = None
 
-        if page.route == "/dashboard":
+        if page.route in ("", "/"):
+            page.title = "QualityCheck - Login"
+            page.add(vista_login)
+
+        elif not page.session.store.get("usuario_id"):
+            # Todas las vistas de la aplicación requieren una sesión iniciada.
+            page.go("/")
+
+        elif page.route == "/dashboard":
             vista_dashboard(page)
 
         elif page.route == "/maquinas":
             vista_listado(page)
 
-        elif page.route == "/maquinas/agregar":
+        elif page.route in ("/maquinas/agregar", "/agregar_maquina"):
             vista_agregar_maquina(page)
+
+        elif page.route.startswith("/maquinas/") and page.route.endswith("/editar"):
+            codigo_maquina = page.route.split("/")[-2]
+            vista_editar_maquina(page, codigo_maquina)
 
         elif page.route.startswith("/maquinas/editar/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
             vista_editar_maquina(page, codigo_maquina)
 
-        elif page.route == "/revisiones":
-            vista_revisiones_preventivas(page)
-
-        elif page.route == "/revisiones/historial":
-            vista_historial_revisiones(page)
-
-        elif page.route.startswith("/revisiones/maquina/"):
+        elif page.route.startswith("/editar_maquina"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
-            vista_revisiones_preventivas(page, codigo_maquina)
+            vista_editar_maquina(page, codigo_maquina)
+
+        elif page.route == "/revisiones" or page.route.startswith("/revisiones/"):
+            vista_revisiones(page)
 
         elif page.route.startswith("/maquinas/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
             vista_detalle_maquina(page, codigo_maquina)
 
+        elif page.route.startswith("/detalle_maquina/"):
+            codigo_maquina = page.route.rsplit("/", 1)[-1]
+            vista_detalle_maquina(page, codigo_maquina)
+
+        else:
+            page.go("/dashboard" if page.session.store.get("usuario_id") else "/")
+
+
+            #EL INICIO DE SESION FUNCIONAL
+    lbl_error = ft.Text(
+        "",
+        color="#DC2626",
+        size=12,
+        weight=ft.FontWeight.BOLD,
+        text_align=ft.TextAlign.CENTER,
+    )
+
     def iniciar_sesion(e):
-        if txt_usuario.value == "maria.lopez" and txt_password.value == "1234":
-            page.window.resizable = True
+        correo_ingresado = txt_usuario.value
+        contrasena_ingresada = txt_password.value
+
+        with SessionLocal() as db:
+            usuario_valido = validar_login(db, correo_ingresado, contrasena_ingresada)
+
+            if usuario_valido:
+                page.session.store.set("usuario_id", usuario_valido.id_usuario)
+                page.session.store.set("usuario_nombre", usuario_valido.nombre)
+
+        if usuario_valido:
+            lbl_error.value = ""
             page.go("/dashboard")
         else:
-            mostrar_snackbar("Usuario o contraseña incorrectos")
+            lbl_error.value = "correo o contraseña incorrectos"
+            page.update()
 
     def cerrar_recuperacion(e):
         dialogo_recuperacion.open = False
@@ -108,7 +147,7 @@ def main(page: ft.Page):
             size=12,
             color="#6B7280",
         ),
-        value="maria.lopez",
+        value="",
         border_color="#BDBDBD",
         focused_border_color="#F5A000",
         label_style=ft.TextStyle(
@@ -127,7 +166,7 @@ def main(page: ft.Page):
             size=12,
             color="#6B7280",
         ),
-        value="1234",
+        value="",
         password=True,
         can_reveal_password=True,
         border_color="#BDBDBD",
@@ -271,6 +310,7 @@ def main(page: ft.Page):
             ft.Container(height=10),
             txt_password,
             ft.Container(height=4),
+            lbl_error,
             recordar_usuario,
             ft.Container(height=2),
             recuperar_pass,
@@ -290,17 +330,21 @@ def main(page: ft.Page):
         expand=True,
     )
 
-    page.add(
-        ft.Column(
-            [
-                header,
-                cuerpo,
-            ],
-            spacing=0,
-            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-            expand=True,
-        )
+    vista_login = ft.Column(
+        [
+            header,
+            cuerpo,
+        ],
+        spacing=0,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        expand=True,
     )
+
+    # Renderiza correctamente el login también al volver desde una ruta protegida.
+    if page.route in ("", "/"):
+        page.add(vista_login)
+    else:
+        cambiar_ruta(None)
 
 
 ft.run(

@@ -7,8 +7,9 @@ from componentes import (
     crear_menu_mas,
     configurar_navbar,
 )
-from maquinas_data import MAQUINAS
 
+from database import SessionLocal
+from services import obtener_todas_las_maquinas, obtener_resumen_dashboard
 
 def vista_dashboard(page: ft.Page):
     page.title = "QualityCheck - Dashboard"
@@ -16,22 +17,23 @@ def vista_dashboard(page: ft.Page):
     page.bgcolor = estilos.COLOR_FONDO
     page.floating_action_button = None
 
+    usuario_id = page.session.store.get("usuario_id")
+    usuario_nombre = page.session.store.get("usuario_nombre")
+
+    if not usuario_id:
+        page.go("/")
+        return
+
     aplicar_tema(page)
 
     header = crear_header()
-    menu_mas = crear_menu_mas()
 
-    maquinas = list(MAQUINAS.values())
-    conteos = {
-        "Operativas": sum(maquina["estado"] == "Operativa" for maquina in maquinas),
-        "En revisión": sum(
-            maquina["estado"] == "Mantenimiento" for maquina in maquinas
-        ),
-        "Fuera de servicio": sum(
-            maquina["estado"] == "Fuera de servicio" for maquina in maquinas
-        ),
-    }
-    conteos["Total"] = sum(conteos.values())
+    menu_mas = crear_menu_mas(page)
+
+    #se obtiene la sesion de postgresql
+    with SessionLocal() as db:
+        m_resumen =obtener_resumen_dashboard(db)
+        lista_maquinas = obtener_todas_las_maquinas(db)
 
     def bloque_resumen(titulo, cantidad, color, icono):
         return ft.Container(
@@ -73,13 +75,13 @@ def vista_dashboard(page: ft.Page):
                     ft.Column(
                         [
                             ft.Text(
-                                maquina["nombre"],
+                                maquina.nombre,
                                 size=14,
                                 weight=ft.FontWeight.BOLD,
                                 color=estilos.COLOR_TEXTO,
                             ),
                             ft.Text(
-                                f"{maquina['codigo']} · {maquina['ubicacion']}",
+                                f"{maquina.codigo_maquina} · {maquina.ubicacion or maquina.area}",
                                 size=11,
                                 color=estilos.COLOR_TEXTO_SECUNDARIO,
                             ),
@@ -95,7 +97,7 @@ def vista_dashboard(page: ft.Page):
                                 size=20,
                             ),
                             ft.Text(
-                                maquina["proxima_inspeccion"],
+                                "Pendiente",
                                 size=11,
                                 color=estilos.COLOR_TEXTO,
                                 text_align=ft.TextAlign.RIGHT,
@@ -117,7 +119,7 @@ def vista_dashboard(page: ft.Page):
             ),
             border_radius=12,
             padding=12,
-            on_click=lambda _: page.go(f"/maquinas/{maquina['codigo']}"),
+            on_click=lambda _: page.go(f"/maquinas/{maquina.codigo_maquina}"),
         )
 
     resumen = ft.Column(
@@ -132,25 +134,25 @@ def vista_dashboard(page: ft.Page):
                 [
                     bloque_resumen(
                         "Operativas",
-                        conteos["Operativas"],
+                        m_resumen["operativas"],
                         "#16A34A",
                         ft.Icons.CHECK_CIRCLE_OUTLINE,
                     ),
                     bloque_resumen(
                         "En revisión",
-                        conteos["En revisión"],
+                        m_resumen["en_revision"],
                         "#D97706",
                         ft.Icons.BUILD_OUTLINED,
                     ),
                     bloque_resumen(
                         "Fuera de servicio",
-                        conteos["Fuera de servicio"],
+                        m_resumen["fuera_de_servicio"],
                         "#DC2626",
                         ft.Icons.ERROR_OUTLINE,
                     ),
                     bloque_resumen(
                         "Total",
-                        conteos["Total"],
+                        m_resumen["total"],
                         "#6B7280",
                         ft.Icons.DASHBOARD_OUTLINED,
                     ),
@@ -173,7 +175,7 @@ def vista_dashboard(page: ft.Page):
                 ),
             ]),
             ft.Column(
-                [tarjeta_revision(maquina) for maquina in maquinas],
+                [tarjeta_revision(m) for m in lista_maquinas],
                 spacing=8,
             ),
         ],

@@ -8,337 +8,142 @@ from componentes import (
     configurar_navbar,
 )
 
-MAQUINAS = {
-    "MAQ-01": {
-        "codigo": "MAQ-01",
-        "nombre": "Torno 03",
-        "marca": "Mazak",
-        "modelo": "QUICK TURN 200",
-        "ubicacion": "Planta 1",
-        "estado": "Operativa",
-        "proxima_inspeccion": "12 de Septiembre de 2026",
-        "ultima_inspeccion": "12 de Agosto de 2026",
-        "hallazgos_abiertos": "2",
-    },
-    "MAQ-02": {
-        "codigo": "MAQ-02",
-        "nombre": "Fresadora 01",
-        "marca": "DMG Mori",
-        "modelo": "CMX 600 V",
-        "ubicacion": "Planta 2",
-        "estado": "Operativa",
-        "proxima_inspeccion": "18 de Septiembre de 2026",
-        "ultima_inspeccion": "18 de Agosto de 2026",
-        "hallazgos_abiertos": "0",
-    },
-    "MAQ-03": {
-        "codigo": "MAQ-03",
-        "nombre": "Prensa 02",
-        "marca": "Haas",
-        "modelo": "VF-2",
-        "ubicacion": "Planta 1",
-        "estado": "Mantenimiento",
-        "proxima_inspeccion": "25 de Septiembre de 2026",
-        "ultima_inspeccion": "25 de Agosto de 2026",
-        "hallazgos_abiertos": "1",
-    },
-}
-
+from database import SessionLocal
+from models import Maquina, Inspeccion
+from services import obtener_historial_revisiones
 
 def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
-    maquina = MAQUINAS.get(codigo_maquina, MAQUINAS["MAQ-01"])
-
-    page.title = f"QualityCheck - {maquina['nombre']}"
+    page.title = f"QualityCheck - Detalle {codigo_maquina}"
     page.padding = 0
     page.bgcolor = estilos.COLOR_FONDO
     page.floating_action_button = None
 
+    #Validar sesión activa
+    usuario_id = page.session.store.get("usuario_id")
+    if not usuario_id:
+        page.go("/")
+        return
+
     aplicar_tema(page)
-    header = crear_header()
-    menu_mas = crear_menu_mas()
 
-    def volver(e):
-        page.go("/maquinas")
+    #Consultar la máquina y sus inspecciones en Supabase
+    with SessionLocal() as db:
+        maquina = db.query(Maquina).filter(Maquina.codigo_maquina == codigo_maquina, Maquina.activa == True).first()
 
-    def mostrar_mensaje(mensaje):
-        snackbar = ft.SnackBar(
-            content=ft.Text(mensaje, color="#FFFFFF"),
-            bgcolor=estilos.COLOR_TEXTO,
-        )
-        page.overlay.append(snackbar)
-        snackbar.open = True
-        page.update()
+        if not maquina:
+            page.add(ft.Text("Máquina no encontrada", color="#DC2626"))
+            return
 
-    def realizar_inspeccion(e):
-        mostrar_mensaje(f"Nueva inspección iniciada para {maquina['nombre']}.")
+        historial = obtener_historial_revisiones(db, maquina.id_maquina)
 
-    def programar_revision(e):
-        # Importación local para evitar una dependencia circular:
-        # revisiones_preventivas.py reutiliza MAQUINAS desde este módulo.
-        from revisiones_preventivas import vista_revisiones_preventivas
+    header = crear_header(titulo=f"Detalle: {maquina.codigo_maquina}")
+    menu_mas = crear_menu_mas(page)
 
-        # Limpia únicamente la vista actual y abre el módulo de revisiones
-        # con la máquina seleccionada previamente.
-        page.clean()
-        vista_revisiones_preventivas(
-            page,
-            maquina_inicial=maquina["codigo"],
-        )
+    #Color del Badge de Estado
+    color_estado = "#16A34A" if maquina.estado == "Operativa" else ("#D97706" if maquina.estado == "En revisión" else "#DC2626")
 
-    estado_color = "#166534" if maquina["estado"] == "Operativa" else "#92400E"
-    estado_fondo = "#DCFCE7" if maquina["estado"] == "Operativa" else "#FEF3C7"
+    # componentes Visuales
+    tarjeta_info = ft.Container(
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text(maquina.nombre, size=18, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO, expand=True),
+                        ft.Container(
+                            content=ft.Text(maquina.estado or "Desconocido", color="#FFFFFF", size=11, weight=ft.FontWeight.BOLD),
+                            bgcolor=color_estado,
+                            padding=8,
+                            border_radius=6,
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Divider(height=1, color="#E1E3E6"),
+                ft.Text(f"Tipo: {maquina.tipo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
+                ft.Text(f"Marca / Modelo: {maquina.marca or 'N/A'} - {maquina.modelo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
+                ft.Text(f"Número de Serie: {maquina.numero_serie or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
+                ft.Text(f"Ubicación / Área: {maquina.ubicacion or 'N/A'} ({maquina.area or 'General'})", size=12, color=estilos.COLOR_TEXTO),
+            ],
+            spacing=8,
+        ),
+        bgcolor="#FFFFFF",
+        padding=16,
+        border_radius=12,
+        border=ft.Border(
+            top=ft.BorderSide(1, "#E1E3E6"),
+            bottom=ft.BorderSide(1, "#E1E3E6"),
+            left=ft.BorderSide(1, "#E1E3E6"),
+            right=ft.BorderSide(1, "#E1E3E6"),
+        ),
+    )
 
-    def resumen(titulo, valor, icono, color=estilos.COLOR_TEXTO):
+    def fila_historial(inspeccion):
         return ft.Container(
-            content=ft.Column(
+            content=ft.Row(
                 [
-                    ft.Icon(icono, color=estilos.COLOR_PRINCIPAL, size=22),
-                    ft.Text(
-                        titulo,
-                        size=11,
-                        color=estilos.COLOR_TEXTO_SECUNDARIO,
+                    ft.Column(
+                        [
+                            ft.Text(f"Inspección #{inspeccion.codigo_inspeccion}", size=13, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
+                            ft.Text(f"Fecha: {inspeccion.fecha_inspeccion.strftime('%d/%m/%Y')}", size=11, color=estilos.COLOR_TEXTO_SECUNDARIO),
+                        ],
+                        spacing=2,
                     ),
                     ft.Text(
-                        valor,
-                        size=14,
+                        inspeccion.resultado_final or "Pendiente",
+                        size=12,
                         weight=ft.FontWeight.BOLD,
-                        color=color,
+                        color="#16A34A" if inspeccion.resultado_final == "Aprobado" else "#DC2626"
                     ),
                 ],
-                spacing=5,
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             bgcolor="#FFFFFF",
+            padding=10,
+            border_radius=8,
             border=ft.Border(
                 top=ft.BorderSide(1, "#E1E3E6"),
                 bottom=ft.BorderSide(1, "#E1E3E6"),
                 left=ft.BorderSide(1, "#E1E3E6"),
                 right=ft.BorderSide(1, "#E1E3E6"),
             ),
-            border_radius=12,
-            padding=12,
-            expand=True,
         )
 
-    def dato_general(etiqueta, valor):
-        return ft.Row(
-            [
-                ft.Text(
-                    etiqueta,
-                    size=13,
-                    color=estilos.COLOR_TEXTO_SECUNDARIO,
-                    expand=True,
-                ),
-                ft.Text(
-                    valor,
-                    size=13,
-                    color=estilos.COLOR_TEXTO,
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.RIGHT,
-                    expand=True,
-                ),
-            ],
-            spacing=10,
-        )
-
-    resumen_estado = ft.Container(
-        content=ft.Row(
-            [
-                ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, color=estado_color, size=22),
-                ft.Column(
-                    [
-                        ft.Text(
-                            "Estado actual",
-                            size=11,
-                            color=estilos.COLOR_TEXTO_SECUNDARIO,
-                        ),
-                        ft.Text(
-                            maquina["estado"],
-                            size=14,
-                            weight=ft.FontWeight.BOLD,
-                            color=estado_color,
-                        ),
-                    ],
-                    spacing=3,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                ),
-            ],
-            spacing=8,
-        ),
-        bgcolor=estado_fondo,
-        border_radius=12,
-        padding=12,
-        expand=True,
+    btn_nueva_revision = ft.ElevatedButton(
+        content=ft.Text("NUEVA INSPECCIÓN", color="#25252B", weight=ft.FontWeight.BOLD),
+        bgcolor="#F5A000",
+        width=320,
+        height=44,
+        on_click=lambda _: page.go(f"/revisiones/maquina/{maquina.codigo_maquina}"),
     )
 
     cuerpo = ft.Column(
         [
-            ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.Icons.ARROW_BACK,
-                        tooltip="Volver a máquinas",
-                        on_click=volver,
-                    ),
-                    ft.Column(
-                        [
-                            ft.Text(
-                                maquina["nombre"],
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                                color=estilos.COLOR_TEXTO,
-                            ),
-                            ft.Text(
-                                maquina["codigo"],
-                                size=13,
-                                color=estilos.COLOR_TEXTO_SECUNDARIO,
-                            ),
-                        ],
-                        spacing=2,
-                        expand=True,
-                    ),
-                ],
-                spacing=4,
-            ),
-            ft.Text(
-                "Resumen de estado",
-                size=16,
-                weight=ft.FontWeight.BOLD,
-                color=estilos.COLOR_TEXTO,
-            ),
-            ft.Row(
-                [
-                    resumen_estado,
-                    ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Icon(
-                                    ft.Icons.WARNING_AMBER_OUTLINED,
-                                    color=estilos.COLOR_PRINCIPAL,
-                                    size=22,
-                                ),
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            "Hallazgos abiertos",
-                                            size=11,
-                                            color=estilos.COLOR_TEXTO_SECUNDARIO,
-                                        ),
-                                        ft.Text(
-                                            maquina["hallazgos_abiertos"],
-                                            size=14,
-                                            weight=ft.FontWeight.BOLD,
-                                            color=estilos.COLOR_TEXTO,
-                                        ),
-                                    ],
-                                    spacing=3,
-                                ),
-                            ],
-                            spacing=8,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        ),
-                        bgcolor="#FFFFFF",
-                        border_radius=12,
-                        padding=12,
-                        expand=True,
-                    ),
-                ],
-                height=60,
-                spacing=10,
-            ),
-            ft.Row(
-                [
-                    resumen(
-                        "Próxima inspección",
-                        maquina["proxima_inspeccion"],
-                        ft.Icons.EVENT_OUTLINED,
-                    ),
-                    resumen(
-                        "Última inspección",
-                        maquina["ultima_inspeccion"],
-                        ft.Icons.HISTORY,
-                    ),
-                ],
-                spacing=10,
-                height=120,
-            ),
-            ft.Container(height=8),
-            ft.Text(
-                "Datos generales",
-                size=16,
-                weight=ft.FontWeight.BOLD,
-                color=estilos.COLOR_TEXTO,
-            ),
-            ft.Container(
-                content=ft.Column(
-                    [
-                        dato_general("Código", maquina["codigo"]),
-                        ft.Divider(height=1, color="#E1E3E6"),
-                        dato_general("Nombre", maquina["nombre"]),
-                        ft.Divider(height=1, color="#E1E3E6"),
-                        dato_general("Marca", maquina["marca"]),
-                        ft.Divider(height=1, color="#E1E3E6"),
-                        dato_general("Modelo", maquina["modelo"]),
-                        ft.Divider(height=1, color="#E1E3E6"),
-                        dato_general("Ubicación", maquina["ubicacion"]),
-                    ],
-                    spacing=12,
-                ),
-                bgcolor="#FFFFFF",
-                border=ft.Border(
-                    top=ft.BorderSide(1, "#E1E3E6"),
-                    bottom=ft.BorderSide(1, "#E1E3E6"),
-                    left=ft.BorderSide(1, "#E1E3E6"),
-                    right=ft.BorderSide(1, "#E1E3E6"),
-                ),
-                border_radius=12,
-                padding=16,
-            ),
-            ft.Button(
-                content=ft.Row(
-                    [
-                        ft.Icon(ft.Icons.ASSIGNMENT_OUTLINED),
-                        ft.Text(
-                            "Realizar nueva inspección",
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                bgcolor=estilos.COLOR_PRINCIPAL,
-                color=estilos.COLOR_TEXTO,
-                on_click=realizar_inspeccion,
-            ),
-            ft.Button(
-                content=ft.Row(
-                    [
-                        ft.Icon(ft.Icons.EVENT_OUTLINED),
-                        ft.Text(
-                            "Programar revisión",
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                bgcolor="#FFFFFF",
-                color=estilos.COLOR_TEXTO,
-                on_click=programar_revision,
+            tarjeta_info,
+            ft.Container(height=10),
+            btn_nueva_revision,
+            ft.Container(height=10),
+            ft.Text("Historial de Revisiones", size=15, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
+            ft.Column(
+                [fila_historial(h) for h in historial] if historial else [ft.Text("Sin revisiones registradas", size=12, color=estilos.COLOR_TEXTO_SECUNDARIO)],
+                spacing=6,
             ),
         ],
-        spacing=12,
+        spacing=6,
         scroll=ft.ScrollMode.AUTO,
         expand=True,
     )
 
-    configurar_navbar(page, menu_mas, indice_inicial=1)
+    cont = ft.Container(content=cuerpo, padding=16, expand=True)
 
     contenido = ft.Stack(
         [
-            ft.Container(content=cuerpo, padding=20, expand=True),
+            cont,
             ft.Container(content=menu_mas, right=15, bottom=15),
         ],
         expand=True,
     )
+
+    configurar_navbar(page, menu_mas, indice_inicial=1)
 
     page.add(
         ft.Column(

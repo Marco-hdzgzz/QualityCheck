@@ -16,7 +16,7 @@ def vista_agregar_maquina(page: ft.Page):
     page.floating_action_button = None
 
     aplicar_tema(page)
-    menu_mas = crear_menu_mas()
+    menu_mas = crear_menu_mas(page)
 
     def mostrar_mensaje(mensaje):
         snackbar = ft.SnackBar(
