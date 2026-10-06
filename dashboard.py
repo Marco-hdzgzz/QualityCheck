@@ -81,7 +81,7 @@ def vista_dashboard(page: ft.Page):
                                 color=estilos.COLOR_TEXTO,
                             ),
                             ft.Text(
-                                f"{maquina.codigo_maquina} · {maquina.ubicacion or maquina.area}",
+                                f"{maquina.codigo_maquina} · {maquina.area_rel.nombre if maquina.area_rel else 'Sin área'}",
                                 size=11,
                                 color=estilos.COLOR_TEXTO_SECUNDARIO,
                             ),

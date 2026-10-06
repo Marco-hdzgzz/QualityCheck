@@ -11,6 +11,7 @@ from componentes import (
 from database import SessionLocal
 from models import Maquina, Inspeccion
 from services import obtener_historial_revisiones
+from sqlalchemy.orm import joinedload
 
 def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
     page.title = f"QualityCheck - Detalle {codigo_maquina}"
@@ -28,13 +29,18 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
 
     #Consultar la máquina y sus inspecciones en Supabase
     with SessionLocal() as db:
-        maquina = db.query(Maquina).filter(Maquina.codigo_maquina == codigo_maquina, Maquina.activa == True).first()
-
+        maquina = (
+            db.query(Maquina)
+            .options(joinedload(Maquina.area_rel))  # 🔑 Eager loading para evitar el DetachedInstanceError
+            .filter(Maquina.codigo_maquina == codigo_maquina, Maquina.activa == True)
+            .first()
+        )
         if not maquina:
             page.add(ft.Text("Máquina no encontrada", color="#DC2626"))
             return
 
         historial = obtener_historial_revisiones(db, maquina.id_maquina)
+    
 
     header = crear_header(titulo=f"Detalle: {maquina.codigo_maquina}")
     menu_mas = crear_menu_mas(page)
@@ -62,7 +68,11 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
                 ft.Text(f"Tipo: {maquina.tipo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
                 ft.Text(f"Marca / Modelo: {maquina.marca or 'N/A'} - {maquina.modelo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
                 ft.Text(f"Número de Serie: {maquina.numero_serie or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
-                ft.Text(f"Ubicación / Área: {maquina.ubicacion or 'N/A'} ({maquina.area or 'General'})", size=12, color=estilos.COLOR_TEXTO),
+                ft.Text(
+                f"Ubicación / Área: {maquina.ubicacion or 'N/A'} ({maquina.area_rel.nombre if maquina.area_rel else 'General'})", 
+                size=12, 
+                color=estilos.COLOR_TEXTO
+            ),
             ],
             spacing=8,
         ),
@@ -116,11 +126,19 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
         on_click=lambda _: page.go(f"/revisiones/maquina/{maquina.codigo_maquina}"),
     )
 
+    btn_editar_maquina = ft.ElevatedButton(
+        content=ft.Text("EDITAR MÁQUINA", color="#25252B", weight=ft.FontWeight.BOLD),
+        bgcolor="#E0E0E0",
+        width=320,
+        height=44,
+        on_click=lambda _: page.go(f"/editar_maquina/{maquina.codigo_maquina}"),
+    )
+
     cuerpo = ft.Column(
         [
             tarjeta_info,
             ft.Container(height=10),
-            btn_nueva_revision,
+            btn_nueva_revision, btn_editar_maquina,
             ft.Container(height=10),
             ft.Text("Historial de Revisiones", size=15, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
             ft.Column(

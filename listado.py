@@ -11,6 +11,8 @@ from componentes import (
 from database import SessionLocal
 from services import obtener_todas_las_maquinas
 
+
+#LAS MAQUINAS SE OBTIENEN DE LA BASE DE DATOS POSTGRESQL (SUPABASE)
 def vista_listado(page: ft.Page):
     page.title = "QualityCheck - Catálogo de Máquinas"
     page.padding = 0
@@ -36,6 +38,9 @@ def vista_listado(page: ft.Page):
         # Asignación de color según el estado operativo de la máquina
         color_estado = "#16A34A" if maquina.estado == "Operativa" else ("#D97706" if maquina.estado == "En revisión" else "#DC2626")
 
+        nombre_area = maquina.area_rel.nombre if maquina.area_rel else None
+        ubicacion_texto = maquina.ubicacion or nombre_area or 'Sin asignar'
+
         return ft.Container(
             content=ft.Row(
                 [
@@ -52,11 +57,13 @@ def vista_listado(page: ft.Page):
                                 size=11,
                                 color=estilos.COLOR_TEXTO_SECUNDARIO,
                             ),
+
                             ft.Text(
-                                f"Ubicación: {maquina.ubicacion or maquina.area or 'Sin asignar'}",
+                                f"Ubicación: {ubicacion_texto}",
                                 size=11,
                                 color=estilos.COLOR_TEXTO_SECUNDARIO,
                             ),
+
                         ],
                         spacing=3,
                         expand=True,
@@ -112,7 +119,7 @@ def vista_listado(page: ft.Page):
         ),
         bgcolor="#F5A000",
         height=42,
-        on_click=lambda _: page.go("/maquinas/agregar"),
+        on_click=lambda _: page.go("/agregar_maquina"),
     )
 
     # Contenedor principal scrollable
