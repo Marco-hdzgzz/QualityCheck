@@ -86,7 +86,10 @@ class CriterioInspeccion(Base):
 
 
 class Inspeccion(Base):
-    __tablename__ = "revisiones"
+    # `hallazgos.id_inspeccion` en la base de datos referencia esta tabla.
+    # La tabla `revisiones` es un remanente antiguo y no debe recibir nuevos
+    # registros de inspección.
+    __tablename__ = "inspecciones"
 
     id_inspeccion = Column(Integer, primary_key=True, index=True)
     codigo_inspeccion = Column(String(20), unique=True, nullable=False) # Ej: INS-00001
@@ -110,7 +113,7 @@ class Hallazgo(Base):
     __tablename__ = "hallazgos"
 
     id_hallazgo = Column(Integer, primary_key=True, index=True)
-    id_inspeccion = Column(Integer, ForeignKey("revisiones.id_inspeccion"), nullable=False)
+    id_inspeccion = Column(Integer, ForeignKey("inspecciones.id_inspeccion"), nullable=False)
     id_criterio = Column(Integer, ForeignKey("criterios_inspeccion.id_criterio"), nullable=False)
     nivel_severidad = Column(String(50), nullable=False) # Bajo, Medio, Alt
     descripcion = Column(String(500), nullable=False)

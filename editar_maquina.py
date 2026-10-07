@@ -10,8 +10,13 @@ from componentes import (
 )
 
 from database import SessionLocal
-from models import Maquina, Area
-from services import actualizar_maquina  # Asegúrate de tener o crear esta función en services.py
+from models import Maquina, Area, CriterioInspeccion
+from services import (
+    eliminar_maquina,
+    obtener_criterios_por_maquina,
+    crear_criterio_inspeccion,
+    eliminar_criterio_inspeccion,
+)
 
 def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
     page.title = f"QualityCheck - Editar {codigo_maquina}"
@@ -31,7 +36,7 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
         snackbar.open = True
         page.update()
 
-    # 🔗 1. CONSULTAR DATOS DE LA MÁQUINA Y ÁREAS EN SUPABASE
+    #1. CONSULTAR DATOS DE LA MÁQUINA Y ÁREAS EN SUPABASE
     with SessionLocal() as db:
         maquina = (
             db.query(Maquina)
@@ -41,9 +46,21 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
         )
         lista_areas = db.query(Area).filter(Area.activa == True).all()
 
+        criterios_bd = []
+        if maquina:
+            criterios_bd = db.query(CriterioInspeccion).filter(
+                CriterioInspeccion.id_maquina == maquina.id_maquina,
+                CriterioInspeccion.activo == True
+            ).all()
+
     if not maquina:
         page.add(ft.Text("La máquina a editar no existe o fue desactivada.", color="#DC2626"))
         return
+
+    criterios_temporales = [
+        {"nombre_criterio": c.nombre_criterio, "categoria": c.categoria}
+        for c in criterios_bd
+    ]
 
     # Opciones para el selector de áreas
     opciones_areas = [
@@ -66,8 +83,10 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
 
     codigo = crear_campo("Código *", maquina.codigo_maquina)
     nombre = crear_campo("Nombre *", maquina.nombre)
+    tipo = crear_campo("Tipo *", maquina.tipo)
     marca = crear_campo("Marca", maquina.marca)
     modelo = crear_campo("Modelo", maquina.modelo)
+    numero_serie = crear_campo("Número de serie", maquina.numero_serie)
     ubicacion = crear_campo("Ubicación", maquina.ubicacion)
 
     dd_area = ft.Dropdown(
@@ -97,18 +116,19 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
     )
 
     
-
-    # 🔑 2. FUNCIÓN PARA APLICAR LOS CAMBIOS EN POSTGRESQL (UPDATE)
+    # 2. FUNCIÓN PARA APLICAR LOS CAMBIOS EN POSTGRESQL (UPDATE)
     def guardar_cambios(e):
-        if not codigo.value or not nombre.value or not dd_area.value:
+        if not codigo.value or not nombre.value or not tipo.value or not dd_area.value:
             mostrar_mensaje("Complete los campos obligatorios (*).")
             return
 
         datos_actualizados = {
             "codigo_maquina": codigo.value.strip(),
             "nombre": nombre.value.strip(),
+            "tipo": tipo.value.strip(),
             "marca": marca.value.strip() if marca.value else None,
             "modelo": modelo.value.strip() if modelo.value else None,
+            "numero_serie": numero_serie.value.strip() if numero_serie.value else None,
             "ubicacion": ubicacion.value.strip() if ubicacion.value else None,
             "id_area": int(dd_area.value),
             "estado": estado.value,
@@ -116,14 +136,15 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
 
         try:
             with SessionLocal() as db:
-                # Localizamos el registro persistido y actualizamos sus atributos
+                # 1. Actualizar atributos de la máquina
                 maq_db = db.query(Maquina).filter(Maquina.id_maquina == maquina.id_maquina).first()
                 if maq_db:
                     for clave, valor in datos_actualizados.items():
                         setattr(maq_db, clave, valor)
+
                     db.commit()
 
-            mostrar_mensaje("Máquina actualizada correctamente.")
+            mostrar_mensaje("Máquina y criterios actualizados correctamente.")
             page.go(f"/maquinas/{codigo.value.strip()}")
 
         except Exception as ex:
@@ -132,13 +153,47 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
     def cancelar(e):
         page.go(f"/maquinas/{codigo_maquina}")
 
+    def cerrar_confirmacion(e=None):
+        dialogo_eliminar.open = False
+        page.update()
+
+    def confirmar_eliminacion(e):
+        try:
+            with SessionLocal() as db:
+                eliminada = eliminar_maquina(db, maquina.id_maquina)
+            cerrar_confirmacion()
+            if eliminada:
+                mostrar_mensaje("Máquina eliminada correctamente.")
+                page.go("/maquinas")
+            else:
+                mostrar_mensaje("No fue posible encontrar la máquina para eliminarla.")
+        except Exception as ex:
+            mostrar_mensaje(f"Error al eliminar la máquina: {ex}")
+
+    dialogo_eliminar = ft.AlertDialog(
+        title=ft.Text("¿Eliminar máquina?", weight=ft.FontWeight.BOLD),
+        content=ft.Text(
+            "Se eliminarán la máquina, sus criterios, revisiones, hallazgos y acciones correctivas. Esta acción no se puede deshacer.",
+            size=12,
+        ),
+        actions=[
+            ft.TextButton(content=ft.Text("Cancelar"), on_click=cerrar_confirmacion),
+            ft.TextButton(content=ft.Text("Eliminar", color="#DC2626"), on_click=confirmar_eliminacion),
+        ],
+    )
+
+    def solicitar_eliminacion(e):
+        if dialogo_eliminar not in page.overlay:
+            page.overlay.append(dialogo_eliminar)
+        dialogo_eliminar.open = True
+        page.update()
+
     
 
     header = crear_header(titulo=f"Editar: {codigo_maquina}")
 
 # --- CONTROLES DE CRITERIOS DE INSPECCIÓN ---
     lista_criterios_ui = ft.Column(spacing=6)
-    criterios_temporales = []  # Almacena los criterios agregados temporalmente
 
     txt_nuevo_criterio = ft.TextField(
         label="Nombre del criterio / punto a revisar",
@@ -167,15 +222,18 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
         width=150,
     )
 
-    def renderizar_criterios():
+    def recargar_criterios():
+        with SessionLocal() as db:
+            criterios_bd = obtener_criterios_por_maquina(db, maquina.id_maquina)
+
         lista_criterios_ui.controls = [
             ft.Container(
                 content=ft.Row(
                     [
                         ft.Column(
                             [
-                                ft.Text(c["nombre_criterio"], size=13, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
-                                ft.Text(f"Categoría: {c['categoria']}", size=11, color=estilos.COLOR_TEXTO_SECUNDARIO),
+                                ft.Text(c.nombre_criterio, size=13, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
+                                ft.Text(f"Categoría: {c.categoria}", size=11, color=estilos.COLOR_TEXTO_SECUNDARIO),
                             ],
                             spacing=2,
                             expand=True,
@@ -183,11 +241,12 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
                         ft.IconButton(
                             icon=ft.Icons.DELETE_OUTLINE,
                             icon_color="#DC2626",
-                            tooltip="Quitar criterio",
-                            on_click=lambda _, idx=i: quitar_criterio(idx),
+                            tooltip="Eliminar criterio",
+                            # 🔑 Elimina el registro por su 'id_criterio' real de la BD
+                            on_click=lambda _, id_crit=c.id_criterio: borrar_criterio_bd(id_crit),
                         ),
                     ],
-                    alignment=ft.MainAxisAlignment.BETWEEN,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
                 bgcolor="#FFFFFF",
                 padding=8,
@@ -199,22 +258,36 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
                     right=ft.BorderSide(1, "#E1E3E6"),
                 ),
             )
-            for i, c in enumerate(criterios_temporales)
+            for c in criterios_bd
         ]
         page.update()
 
+    # 🔑 GUARDAR CRITERIO PERMANENTEMENTE EN LA BD
     def agregar_criterio(e):
         if txt_nuevo_criterio.value.strip():
-            criterios_temporales.append({
-                "nombre_criterio": txt_nuevo_criterio.value.strip(),
-                "categoria": dd_categoria_criterio.value,
-            })
-            txt_nuevo_criterio.value = ""
-            renderizar_criterios()
+            try:
+                with SessionLocal() as db:
+                    crear_criterio_inspeccion(
+                        db=db,
+                        id_maquina=maquina.id_maquina,
+                        nombre_criterio=txt_nuevo_criterio.value.strip(),
+                        categoria=dd_categoria_criterio.value or "General"
+                    )
+                txt_nuevo_criterio.value = ""
+                recargar_criterios()  # Vuelve a consultar la BD para refrescar la lista
+                mostrar_mensaje("Criterio guardado en la máquina.")
+            except Exception as ex:
+                mostrar_mensaje(f"Error al guardar criterio: {ex}")
 
-    def quitar_criterio(index):
-        criterios_temporales.pop(index)
-        renderizar_criterios()
+    # 🔑 ELIMINAR CRITERIO DIRECTAMENTE DE LA BD
+    def borrar_criterio_bd(id_criterio: int):
+        try:
+            with SessionLocal() as db:
+                eliminar_criterio_inspeccion(db, id_criterio)
+            recargar_criterios()
+            mostrar_mensaje("Criterio eliminado.")
+        except Exception as ex:
+            mostrar_mensaje(f"Error al eliminar criterio: {ex}")
 
     btn_agregar_criterio = ft.IconButton(
         icon=ft.Icons.ADD_CIRCLE,
@@ -227,12 +300,15 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
         [
             ft.Divider(height=1, color="#E1E3E6"),
             ft.Text("Criterios de Inspección Específicos", size=16, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
-            ft.Text("Define los puntos técnicos que se evaluarón obligatoriamente en cada revisión preventiva.", size=12, color=estilos.COLOR_TEXTO_SECUNDARIO),
+            ft.Text("Define los puntos técnicos que se evaluarán en cada revisión preventiva de este equipo.", size=12, color=estilos.COLOR_TEXTO_SECUNDARIO),
             ft.Row([txt_nuevo_criterio, dd_categoria_criterio, btn_agregar_criterio], spacing=8),
             lista_criterios_ui,
         ],
         spacing=8,
     )
+
+    # 🔑 CARGA INICIAL AL ABRIR LA PANTALLA
+    recargar_criterios()
 
     formulario = ft.Column(
         controls=[
@@ -240,6 +316,7 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
             ft.Text("Modifica las especificaciones o ubicación de la máquina.", size=13, color=estilos.COLOR_TEXTO_SECUNDARIO),
             ft.Container(height=12),
             ft.Row([codigo, nombre], spacing=12),
+            ft.Row([tipo, numero_serie], spacing=12),
             ft.Row([marca, modelo], spacing=12),
             ft.Row([dd_area, ubicacion], spacing=12),
             ft.Row([estado], spacing=12),
@@ -248,6 +325,10 @@ def vista_editar_maquina(page: ft.Page, codigo_maquina: str):
             ft.Container(height=16),
             ft.Row(
                 [
+                    ft.TextButton(
+                        content=ft.Text("Eliminar máquina", color="#DC2626"),
+                        on_click=solicitar_eliminacion,
+                    ),
                     ft.TextButton(content=ft.Text("Cancelar", color=estilos.COLOR_TEXTO), on_click=cancelar),
                     ft.Button(
                         content=ft.Text("Guardar cambios", color=estilos.COLOR_TEXTO, weight=ft.FontWeight.BOLD),

@@ -46,11 +46,12 @@ def crear_nueva_maquina(db: Session, datos_maquina: dict):
     db.refresh(nueva_maquina)
     return nueva_maquina
 
-# Obtener todas las máquinas registradas, incluyendo las inactivas
+# Obtener únicamente las máquinas disponibles en el catálogo.
 def obtener_todas_las_maquinas(db: Session):
     return (
         db.query(Maquina)
-        .options(joinedload(Maquina.area_rel))  
+        .options(joinedload(Maquina.area_rel))
+        .filter(Maquina.activa == True)
         .all()
     )
 
@@ -62,23 +63,90 @@ def obtener_maquina_por_codigo(db: Session, codigo_maquina: str):
         .first()
     )
 
-def actualizar_maquina(db: Session, id_maquina: int, datos_actualizados: dict):
+def actualizar_maquina(db: Session, id_maquina: int, datos: dict, criterios: list):
+    # 1. Actualizar máquina
+    maq_db = db.query(Maquina).filter(Maquina.id_maquina == id_maquina).first()
+    if maq_db:
+        for clave, valor in datos.items():
+            setattr(maq_db, clave, valor)
+
+        # 2. Reemplazar criterios antiguos por los nuevos
+        db.query(CriterioInspeccion).filter(
+            CriterioInspeccion.id_maquina == id_maquina
+        ).delete()
+
+        for crit in criterios:
+            nuevo_crit = CriterioInspeccion(
+                id_maquina=id_maquina,
+                nombre_criterio=crit["nombre_criterio"],
+                categoria=crit["categoria"],
+                activo=True
+            )
+            db.add(nuevo_crit)
+
+        db.commit()
+        return maq_db
+    return None
+
+def eliminar_maquina(db: Session, id_maquina: int):
+    """Elimina la máquina y los registros que dependen exclusivamente de ella."""
     maquina = db.query(Maquina).filter(Maquina.id_maquina == id_maquina).first()
     if not maquina:
-        return None
+        return False
 
-    for key, value in datos_actualizados.items():
-        setattr(maquina, key, value)
+    # Se eliminan primero los hijos para cumplir las llaves foráneas. Todo se
+    # confirma junto; si ocurre un error, la sesión revierte la operación.
+    ids_inspecciones = db.query(Inspeccion.id_inspeccion).filter(
+        Inspeccion.id_maquina == id_maquina
+    )
+    ids_hallazgos = db.query(Hallazgo.id_hallazgo).filter(
+        Hallazgo.id_inspeccion.in_(ids_inspecciones)
+    )
 
+    db.query(AccionCorrectiva).filter(
+        AccionCorrectiva.id_hallazgo.in_(ids_hallazgos)
+    ).delete(synchronize_session=False)
+    db.query(Hallazgo).filter(
+        Hallazgo.id_inspeccion.in_(ids_inspecciones)
+    ).delete(synchronize_session=False)
+    db.query(Inspeccion).filter(
+        Inspeccion.id_maquina == id_maquina
+    ).delete(synchronize_session=False)
+    db.query(CriterioInspeccion).filter(
+        CriterioInspeccion.id_maquina == id_maquina
+    ).delete(synchronize_session=False)
+    db.delete(maquina)
     db.commit()
-    db.refresh(maquina)
-    return maquina
+    return True
 
 def obtener_criterios_por_maquina(db: Session, id_maquina: int):
+    """Obtiene los criterios activos asignados a una máquina específica."""
     return db.query(CriterioInspeccion).filter(
         CriterioInspeccion.id_maquina == id_maquina,
         CriterioInspeccion.activo == True
     ).all()
+
+def crear_criterio_inspeccion(db: Session, id_maquina: int, nombre_criterio: str, categoria: str = "General"):
+    """Inserta un nuevo criterio de inspección directamente en la base de datos."""
+    nuevo_criterio = CriterioInspeccion(
+        id_maquina=id_maquina,
+        nombre_criterio=nombre_criterio,
+        categoria=categoria,
+        activo=True
+    )
+    db.add(nuevo_criterio)
+    db.commit()
+    db.refresh(nuevo_criterio)
+    return nuevo_criterio
+
+def eliminar_criterio_inspeccion(db: Session, id_criterio: int):
+    """Elimina permanentemente un criterio de inspección por su ID."""
+    criterio = db.query(CriterioInspeccion).filter(CriterioInspeccion.id_criterio == id_criterio).first()
+    if criterio:
+        db.delete(criterio)
+        db.commit()
+        return True
+    return False
 
 def guardar_inspeccion_completa(db: Session, datos_inspeccion: dict, resultados_criterios: list):
     # 1. Crear el registro principal de la inspección
@@ -118,17 +186,6 @@ def guardar_inspeccion_completa(db: Session, datos_inspeccion: dict, resultados_
 def obtener_criterios_activos(db: Session):
     ##el chechlist de criterios para mostrar al inspector
     return db.query(CriterioInspeccion).filter(CriterioInspeccion.activo == True).all()
-
-def crear_criterio_inspeccion(db: Session, categoria: str, nombre: str, descripcion: str = None):
-    nuevo_criterio = CriterioInspeccion(
-        categoria=categoria,
-        nombre_criterio=nombre, 
-        description=descripcion,
-    )
-    db.add(nuevo_criterio)
-    db.commit()
-    db.refresh(nuevo_criterio)
-    return nuevo_criterio
 
 def registrar_inspeccion_completa(db: Session, id_maquina: int, id_inspector: int, tipo: str, resultado: str, observaciones: str, lista_hallazgos: list =None):
     ##registrar la inspeccion y sus hallazgos asociados en una sola transaccion

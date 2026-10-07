@@ -9,7 +9,7 @@ from componentes import (
 )
 
 from database import SessionLocal
-from models import Maquina, Inspeccion
+from models import Maquina, CriterioInspeccion, Inspeccion
 from services import obtener_historial_revisiones
 from sqlalchemy.orm import joinedload
 
@@ -31,15 +31,25 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
     with SessionLocal() as db:
         maquina = (
             db.query(Maquina)
-            .options(joinedload(Maquina.area_rel))  # 🔑 Eager loading para evitar el DetachedInstanceError
+            .options(joinedload(Maquina.area_rel))  #Eager loading para evitar el DetachedInstanceError
             .filter(Maquina.codigo_maquina == codigo_maquina, Maquina.activa == True)
             .first()
         )
         if not maquina:
             page.add(ft.Text("Máquina no encontrada", color="#DC2626"))
+            page.go("/maquinas")
             return
 
         historial = obtener_historial_revisiones(db, maquina.id_maquina)
+        criterios = (
+            db.query(CriterioInspeccion)
+            .filter(
+                CriterioInspeccion.id_maquina == maquina.id_maquina,
+                CriterioInspeccion.activo == True,
+            )
+            .order_by(CriterioInspeccion.categoria, CriterioInspeccion.nombre_criterio)
+            .all()
+        )
     
 
     header = crear_header(titulo=f"Detalle: {maquina.codigo_maquina}")
@@ -65,6 +75,7 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
                 ft.Divider(height=1, color="#E1E3E6"),
+                ft.Text(f"Código: {maquina.codigo_maquina}", size=12, color=estilos.COLOR_TEXTO),
                 ft.Text(f"Tipo: {maquina.tipo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
                 ft.Text(f"Marca / Modelo: {maquina.marca or 'N/A'} - {maquina.modelo or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
                 ft.Text(f"Número de Serie: {maquina.numero_serie or 'N/A'}", size=12, color=estilos.COLOR_TEXTO),
@@ -85,6 +96,41 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
             left=ft.BorderSide(1, "#E1E3E6"),
             right=ft.BorderSide(1, "#E1E3E6"),
         ),
+    )
+
+    tarjeta_criterios = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Criterios de inspección", size=15, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
+                *(
+                    [
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text(criterio.nombre_criterio, size=13, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
+                                    ft.Text(f"Categoría: {criterio.categoria or 'General'}", size=11, color=estilos.COLOR_TEXTO_SECUNDARIO),
+                                    ft.Text(criterio.description, size=11, color=estilos.COLOR_TEXTO_SECUNDARIO)
+                                    if criterio.description else ft.Container(),
+                                ],
+                                spacing=3,
+                            ),
+                            padding=8,
+                            border=ft.Border.all(1, "#E1E3E6"),
+                            border_radius=6,
+                        )
+                        for criterio in criterios
+                    ]
+                    if criterios else [
+                        ft.Text("No hay criterios de inspección registrados para esta máquina.", size=12, color=estilos.COLOR_TEXTO_SECUNDARIO)
+                    ]
+                ),
+            ],
+            spacing=8,
+        ),
+        bgcolor="#FFFFFF",
+        padding=16,
+        border_radius=12,
+        border=ft.Border.all(1, "#E1E3E6"),
     )
 
     def fila_historial(inspeccion):
@@ -139,6 +185,8 @@ def vista_detalle_maquina(page: ft.Page, codigo_maquina: str):
             tarjeta_info,
             ft.Container(height=10),
             btn_nueva_revision, btn_editar_maquina,
+            ft.Container(height=10),
+            tarjeta_criterios,
             ft.Container(height=10),
             ft.Text("Historial de Revisiones", size=15, weight=ft.FontWeight.BOLD, color=estilos.COLOR_TEXTO),
             ft.Column(

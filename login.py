@@ -9,6 +9,7 @@ from editar_maquina import vista_editar_maquina
 from revisiones import vista_revisiones
 from database import SessionLocal
 from services import validar_login
+from crear_revision import vista_crear_revision
 
 
 def main(page: ft.Page):
@@ -55,34 +56,32 @@ def main(page: ft.Page):
         elif page.route in ("/maquinas/agregar", "/agregar_maquina"):
             vista_agregar_maquina(page)
 
+        # 1. Rutas específicas para EDITAR MÁQUINA (van primero)
+        elif page.route.startswith("/maquinas/editar/") or page.route.startswith("/editar_maquina/"):
+            codigo_maquina = page.route.rsplit("/", 1)[-1]
+            vista_editar_maquina(page, codigo_maquina)
+
         elif page.route.startswith("/maquinas/") and page.route.endswith("/editar"):
             codigo_maquina = page.route.split("/")[-2]
             vista_editar_maquina(page, codigo_maquina)
 
-        elif page.route.startswith("/maquinas/editar/"):
+        # 2. 🔑 RUTA ESPECÍFICA PARA CREAR REVISIÓN (debe ir ANTES de /revisiones)
+        elif page.route.startswith("/revisiones/maquina/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
-            vista_editar_maquina(page, codigo_maquina)
+            vista_crear_revision(page, codigo_maquina)
 
-        elif page.route.startswith("/editar_maquina"):
-            codigo_maquina = page.route.rsplit("/", 1)[-1]
-            vista_editar_maquina(page, codigo_maquina)
-
-        elif page.route == "/revisiones" or page.route.startswith("/revisiones/"):
+        # 3. Ruta general del LISTADO DE REVISIONES (va DESPUÉS de /revisiones/maquina/)
+        elif page.route == "/revisiones":
             vista_revisiones(page)
 
-        elif page.route.startswith("/maquinas/"):
-            codigo_maquina = page.route.rsplit("/", 1)[-1]
-            vista_detalle_maquina(page, codigo_maquina)
-
-        elif page.route.startswith("/detalle_maquina/"):
+        # 4. Rutas de DETALLE DE MÁQUINA (van al final del bloque de máquinas)
+        elif page.route.startswith("/maquinas/") or page.route.startswith("/detalle_maquina/"):
             codigo_maquina = page.route.rsplit("/", 1)[-1]
             vista_detalle_maquina(page, codigo_maquina)
 
         else:
             page.go("/dashboard" if page.session.store.get("usuario_id") else "/")
 
-
-            #EL INICIO DE SESION FUNCIONAL
     lbl_error = ft.Text(
         "",
         color="#DC2626",
