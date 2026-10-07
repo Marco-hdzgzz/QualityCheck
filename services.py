@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models import Maquina, Inspeccion, Usuario, CriterioInspeccion, Hallazgo, AccionCorrectiva
 from datetime import datetime
+from sqlalchemy.orm import Session, joinedload
 
 #OPERACIONES CRUD
 
@@ -19,8 +20,8 @@ def validar_login(db: Session, correo: str, contrasena: str):
 
 
 
-# Obtener todas las máquinas registradas
-def obtener_todas_las_maquinas(db: Session):
+# Obtener todas las máquinas activas
+def obtener_todas_las_maquinas_activas(db: Session):
     return db.query(Maquina).filter(Maquina.activa == True).all()
 
 # Obtener métricas para el Dashboard
@@ -45,16 +46,80 @@ def crear_nueva_maquina(db: Session, datos_maquina: dict):
     db.refresh(nueva_maquina)
     return nueva_maquina
 
-# Obtener todas las máquinas activas
+# Obtener todas las máquinas registradas, incluyendo las inactivas
 def obtener_todas_las_maquinas(db: Session):
-    return db.query(Maquina).filter(Maquina.activa == True).all()
+    return (
+        db.query(Maquina)
+        .options(joinedload(Maquina.area_rel))  
+        .all()
+    )
+
+def obtener_maquina_por_codigo(db: Session, codigo_maquina: str):
+    return (
+        db.query(Maquina)
+        .options(joinedload(Maquina.area_rel))  
+        .filter(Maquina.codigo_maquina == codigo_maquina)
+        .first()
+    )
+
+def actualizar_maquina(db: Session, id_maquina: int, datos_actualizados: dict):
+    maquina = db.query(Maquina).filter(Maquina.id_maquina == id_maquina).first()
+    if not maquina:
+        return None
+
+    for key, value in datos_actualizados.items():
+        setattr(maquina, key, value)
+
+    db.commit()
+    db.refresh(maquina)
+    return maquina
+
+def obtener_criterios_por_maquina(db: Session, id_maquina: int):
+    return db.query(CriterioInspeccion).filter(
+        CriterioInspeccion.id_maquina == id_maquina,
+        CriterioInspeccion.activo == True
+    ).all()
+
+def guardar_inspeccion_completa(db: Session, datos_inspeccion: dict, resultados_criterios: list):
+    # 1. Crear el registro principal de la inspección
+    nueva_inspeccion = Inspeccion(**datos_inspeccion)
+    db.add(nueva_inspeccion)
+    db.flush()  # Obtener id_inspeccion
+
+    hubo_fallas = False
+
+    # 2. Guardar el detalle de cada criterio evaluado
+    for item in resultados_criterios:
+        detalle = Inspeccion(
+            id_inspeccion=nueva_inspeccion.id_inspeccion,
+            id_criterio=item["id_criterio"],
+            cumple=item["cumple"],
+            observaciones=item.get("observaciones")
+        )
+        if not item["cumple"]:
+            hubo_fallas = True
+        db.add(detalle)
+
+    # 3. Determinar resultado y actualizar estado de la máquina
+    maquina = db.query(Maquina).filter(Maquina.id_maquina == datos_inspeccion["id_maquina"]).first()
+    if hubo_fallas:
+        nueva_inspeccion.resultado_final = "Con Hallazgos / Mantenimiento Correctivo Requerido"
+        if maquina:
+            maquina.estado = "En revisión"
+    else:
+        nueva_inspeccion.resultado_final = "Aprobado (Sin hallazgos)"
+        if maquina:
+            maquina.estado = "Operativa"
+
+    db.commit()
+    return nueva_inspeccion
 
 
 def obtener_criterios_activos(db: Session):
     ##el chechlist de criterios para mostrar al inspector
     return db.query(CriterioInspeccion).filter(CriterioInspeccion.activo == True).all()
 
-def crear_criterio(db: Session, categoria: str, nombre: str, descripcion: str = None):
+def crear_criterio_inspeccion(db: Session, categoria: str, nombre: str, descripcion: str = None):
     nuevo_criterio = CriterioInspeccion(
         categoria=categoria,
         nombre_criterio=nombre, 

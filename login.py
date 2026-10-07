@@ -12,6 +12,7 @@ from services import validar_login
 
 
 def main(page: ft.Page):
+
     page.title = "QualityCheck - Login"
     page.padding = 0
     page.bgcolor = "#F5F6F8"

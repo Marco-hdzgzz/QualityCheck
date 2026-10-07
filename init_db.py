@@ -22,9 +22,9 @@ def inicializar_bd():
             )
             db.add(usuario_admin)
             db.commit()
-            print("✅ Usuario creado con éxito: admin@qualitycheck.com / 1234")
+            print("Usuario creado con éxito: admin@qualitycheck.com / 1234")
         else:
-            print("ℹ️ Ya existen usuarios en la base de datos.")
+            print("ℹYa existen usuarios en la base de datos.")
             
     except Exception as e:
         print(f"Error al insertar usuario de prueba: {e}")

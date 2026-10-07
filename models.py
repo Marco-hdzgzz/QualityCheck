@@ -37,30 +37,53 @@ class usuarioRol(Base):
     usuario = relationship("Usuario")
     rol = relationship("rol")
 
+class Area(Base):
+    __tablename__ = "areas"
+
+    id_area = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False, unique=True)
+    descripcion = Column(String(255), nullable=True)
+    activa = Column(Boolean, default=True)
+
+    # Relación con máquinas
+    maquinas = relationship("Maquina", back_populates="area_rel")
 
 class Maquina(Base):
     __tablename__ = "maquinas"
 
     id_maquina = Column(Integer, primary_key=True, index=True)
+    id_area = Column(Integer, ForeignKey("areas.id_area"), nullable=False)
     codigo_maquina = Column(String(20), unique=True, nullable=False, index=True) # Ej: MAQ-001
     nombre = Column(String(150), nullable=False) # Ej: Torno CNC 03
     tipo = Column(String(100), nullable=False)   # Ej: Torno CNC
     marca = Column(String(100))                  # Ej: Haas
     modelo = Column(String(100))                 # Ej: ST-20
     numero_serie = Column(String(100), unique=True)
-    area = Column(String(100), nullable=False)   # Ej: Producción
-    ubicacion = Column(String(150))              # Ej: Línea 2
+    ubicacion = Column(String(150), nullable=True)              # Ej: Línea 2
     estado = Column(String(50), default="Operativa", index=True) # Operativa, En revisión, Fuera de servicio
     activa = Column(Boolean, default=True)
+
+#Vinculación con la tabla Area
+    area_rel = relationship("Area", back_populates="maquinas")
+
+    #Criterios específicos asignados a esta máquina
+    criterios = relationship("CriterioInspeccion", back_populates="maquina")
+
+
 
 class CriterioInspeccion(Base):
     __tablename__ = "criterios_inspeccion"
 
     id_criterio = Column(Integer, primary_key=True, index=True)
+    id_maquina = Column(Integer, ForeignKey("maquinas.id_maquina"), nullable=False)
     categoria = Column(String(100), nullable=False) #como: Seguridad, Calidad, Mantenimiento
     nombre_criterio = Column(String(150), nullable=False)
     description = Column(String, nullable=True)
     activo = Column(Boolean, default=True)
+
+    #relaciones
+    maquina = relationship("Maquina", back_populates="criterios")
+
 
 class Inspeccion(Base):
     __tablename__ = "revisiones"
